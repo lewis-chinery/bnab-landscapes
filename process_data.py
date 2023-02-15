@@ -141,6 +141,22 @@ def load_raw_affinity_data(ab):
     return df
 
 
+def get_ags(ab):
+    '''
+    Get Ags that each Ab targets
+
+    :returns: list of strs of Ag names
+    '''
+    if ab == "6261":
+        ags = ["h1", "h9"]
+    elif ab == "9114":
+        ags = ["h1", "h3", "fluB"]
+    else:
+        raise ValueError("ab must be either '9114' or 6261")
+
+    return ags
+
+
 def get_columns_of_interest(ab):
     '''
     9114 and 6261 bind different Ags and have different column names
@@ -148,14 +164,8 @@ def get_columns_of_interest(ab):
     :param ab: str with "9114" or "6261"
     :returns: list of present column names of interest
     '''
-    if ab == "9114":
-        cols = ["variant", "h1_mean", "h3_mean", "fluB_mean", "som_mut"]
-    elif ab == "6261":
-        cols = ["variant", "h1_mean", "h9_mean", "som_mut"]
-    else:
-        raise ValueError("ab must be either '9114' or 6261")
 
-    return cols
+    return ["variant", "som_mut"] + [f"{ag}_mean" for ag in get_ags(ab)]
 
 
 def binary_to_aa_str(binary, ab, ignore_same_residues_as_paper=True):
@@ -219,6 +229,21 @@ def binary_to_full_Hseq(binary, ab, ignore_same_residues_as_paper=True):
     return full_H_seq
 
 
+def get_ordered_col_names(ab):
+    '''
+    Make nicely ordered col names for processed df
+
+    :returns: list of col names
+    '''
+    common_names = ["binary_id", "str_aa_id", "edit_distance", "H_seq"]
+    
+    ags = get_ags(ab)
+    ab_specific_names_mean = [f"{ag}_mean" for ag in ags]
+    ab_specific_names_class = [f"{ag}_class" for ag in ags]
+
+    return common_names + ab_specific_names_mean + ab_specific_names_class
+
+
 def load_processed_affinity_data(ab):
     '''
     Create df with only columns of interest, nicely ordered and named
@@ -236,12 +261,11 @@ def load_processed_affinity_data(ab):
     max_mutations = 16 if ab == "9114" else 11
     processed_df["edit_distance"] = processed_df.apply(lambda row: max_mutations-row["som_mut"], axis=1)
 
-    unordered_cols = list(processed_df.columns)
-    ordered_cols = ["binary_id", "str_aa_id", "edit_distance", "H_seq"]
-    new_cols = ordered_cols + list(set(unordered_cols)-set(ordered_cols))
-    new_cols.remove("som_mut")
+    for ag in get_ags(ab):
+        class_min = processed_df[f"{ag}_mean"].min()
+        processed_df[f"{ag}_class"] = processed_df.apply(lambda row: 1 if row[f"{ag}_mean"]>class_min else 0, axis=1)
 
-    return processed_df[new_cols]
+    return processed_df[get_ordered_col_names(ab)]
 
 
 def plot_affinity_by_edit_distance(ab, processed_df, target):
