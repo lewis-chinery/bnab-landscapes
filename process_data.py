@@ -1,5 +1,7 @@
 import os
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 def get_germline_sequence(ab):
@@ -240,3 +242,18 @@ def load_processed_affinity_data(ab):
     new_cols.remove("som_mut")
 
     return processed_df[new_cols]
+
+
+def plot_affinity_by_edit_distance(ab, processed_df, target):
+    '''
+    Plot affinity of ab against a target, similar to paper
+
+    :param processed_df: nicely processed df with edit distance
+    :param target: antigen name e.g. "h9"
+    '''
+
+    sns.boxplot(processed_df, x="edit_distance", y=f"{target}_mean")
+    plt.title(f"{ab} affinity against {target}")
+    plt.xlabel(f"edit distance from {ab}")
+    plt.ylabel("-log(Kd)")
+    plt.show()
